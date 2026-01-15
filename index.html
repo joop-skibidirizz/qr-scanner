@@ -29,8 +29,24 @@
       background: #020617;
       padding: 0.75rem 1rem;
       border-radius: 12px;
+      min-height: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     a { color: #38bdf8; }
+    #playButton {
+      margin-top: 0.5rem;
+      background: #38bdf8;
+      color: #02202a;
+      border: none;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    /* hide native audio UI when present */
+    audio { display: none; }
   </style>
 </head>
 <body>
@@ -38,15 +54,89 @@
   <div id="reader"></div>
   <div id="result">Scan een QR-code…</div>
 
+  <!-- Hidden audio element used to play scanned audio files -->
+  <audio id="audio" preload="auto"></audio>
+
   <script>
     const resultEl = document.getElementById('result');
+    const audioEl = document.getElementById('audio');
+
+    // basic check for common audio file extensions
+    function looksLikeAudioUrl(url) {
+      return /\.(mp3|wav|ogg|m4a|aac|flac|webm)(\?.*)?$/i.test(url);
+    }
+
+    function clearResultUI() {
+      resultEl.innerHTML = '';
+      // remove any play button if present
+      const btn = document.getElementById('playButton');
+      if (btn) btn.remove();
+    }
+
+    function showPlayButton() {
+      clearResultUI();
+      const btn = document.createElement('button');
+      btn.id = 'playButton';
+      btn.textContent = 'Klik om geluid te starten';
+      btn.addEventListener('click', async () => {
+        try {
+          await audioEl.play();
+          btn.remove();
+          resultEl.textContent = '🎵 Afspelen...';
+        } catch (e) {
+          resultEl.textContent = 'Kan audio niet afspelen.';
+        }
+      });
+      resultEl.appendChild(btn);
+    }
+
+    async function tryPlayAudio(url) {
+      // stop previous audio
+      try {
+        audioEl.pause();
+      } catch (e) {}
+      audioEl.src = url;
+      audioEl.currentTime = 0;
+
+      try {
+        // attempt autoplay
+        await audioEl.play();
+        clearResultUI();
+        // minimal status (no title shown)
+        resultEl.textContent = '🎵 Afspelen...';
+      } catch (err) {
+        // autoplay blocked — show a play button so the user can start playback
+        showPlayButton();
+      }
+    }
 
     function onScanSuccess(decodedText) {
-      resultEl.innerHTML = `Gescand:<br><a href="${decodedText}" target="_blank">${decodedText}</a>`;
+      // If it's an audio file link, play it and do not show the title/URL.
+      if (/^https?:\/\//i.test(decodedText) && looksLikeAudioUrl(decodedText)) {
+        tryPlayAudio(decodedText);
+        return;
+      }
+
+      // fallback: if it's a generic URL, display a discreet link (no "Gescand:" title)
+      if (/^https?:\/\//i.test(decodedText)) {
+        clearResultUI();
+        const a = document.createElement('a');
+        a.href = decodedText;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        // show link but not as a large title
+        a.textContent = 'Open link';
+        resultEl.appendChild(a);
+        return;
+      }
+
+      // Non-URL or other content: show the raw text but without a large title
+      clearResultUI();
+      resultEl.textContent = decodedText;
     }
 
     function onScanFailure(error) {
-      // stil falen, camera blijft scannen
+      // still failing, camera keeps scanning; do nothing to avoid spam
     }
 
     const html5QrCode = new Html5Qrcode("reader");
@@ -58,6 +148,8 @@
           onScanSuccess,
           onScanFailure
         );
+      } else {
+        resultEl.innerText = 'Geen camera gevonden.';
       }
     }).catch(err => {
       resultEl.innerText = 'Geen camera toegang.';
