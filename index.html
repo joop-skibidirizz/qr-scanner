@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <title>QR Scanner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    h1 { margin-bottom: 1rem; }
+    #reader {
+      width: 300px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    #result {
+      margin-top: 1rem;
+      word-break: break-all;
+      background: #020617;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+    }
+    a { color: #38bdf8; }
+  </style>
+</head>
+<body>
+  <h1>📷 QR-code scanner</h1>
+  <div id="reader"></div>
+  <div id="result">Scan een QR-code…</div>
+
+  <script>
+    const resultEl = document.getElementById('result');
+
+    function onScanSuccess(decodedText) {
+      resultEl.innerHTML = `Gescand:<br><a href="${decodedText}" target="_blank">${decodedText}</a>`;
+    }
+
+    function onScanFailure(error) {
+      // stil falen, camera blijft scannen
+    }
+
+    const html5QrCode = new Html5Qrcode("reader");
+    Html5Qrcode.getCameras().then(cameras => {
+      if (cameras && cameras.length) {
+        html5QrCode.start(
+          cameras[0].id,
+          { fps: 10, qrbox: 250 },
+          onScanSuccess,
+          onScanFailure
+        );
+      }
+    }).catch(err => {
+      resultEl.innerText = 'Geen camera toegang.';
+    });
+  </script>
+</body>
+</html>
