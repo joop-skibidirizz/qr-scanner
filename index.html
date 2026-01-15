@@ -1,62 +1,67 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hitster Test</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <meta charset="UTF-8" />
+  <title>QR Scanner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    h1 { margin-bottom: 1rem; }
+    #reader {
+      width: 300px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    #result {
+      margin-top: 1rem;
+      word-break: break-all;
+      background: #020617;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+    }
+    a { color: #38bdf8; }
+  </style>
 </head>
+<body>
+  <h1>📷 QR-code scanner</h1>
+  <div id="reader"></div>
+  <div id="result">Scan een QR-code…</div>
 
-<body style="text-align:center; font-family:sans-serif;">
-  <h2>Hitster QR</h2>
-  <button id="start">START</button>
-  <div id="reader" style="width:300px; margin:auto; display:none;"></div>
-  <p id="status">wachten</p>
+  <script>
+    const resultEl = document.getElementById('result');
 
-  <audio id="audio"></audio>
+    function onScanSuccess(decodedText) {
+      resultEl.innerHTML = `Gescand:<br><a href="${decodedText}" target="_blank">${decodedText}</a>`;
+    }
 
-<script>
-const startBtn = document.getElementById("start");
-const reader = document.getElementById("reader");
-const status = document.getElementById("status");
-const audio = document.getElementById("audio");
+    function onScanFailure(error) {
+      // stil falen, camera blijft scannen
+    }
 
-const SILENT =
- "data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAAAAAAAAA";
-
-let qr;
-
-startBtn.onclick = async () => {
-  // 🔓 AUDIO UNLOCK – DIT MOET ALS EERSTE
-  audio.src = SILENT;
-  audio.muted = true;
-  await audio.play();
-  audio.pause();
-  audio.muted = false;
-
-  // UI
-  startBtn.style.display = "none";
-  reader.style.display = "block";
-  status.innerText = "scan…";
-
-  // CAMERA PAS NA AUDIO
-  qr = new Html5Qrcode("reader");
-  const cams = await Html5Qrcode.getCameras();
-  await qr.start(cams[0].id, { fps: 10, qrbox: 250 }, onScan);
-};
-
-function onScan(url) {
-  qr.pause();
-  audio.src = url;
-  audio.play();
-  status.innerText = "🎶 speelt 30s";
-
-  setTimeout(() => {
-    audio.pause();
-    status.innerText = "stop – raad!";
-    qr.resume();
-  }, 30000);
-}
-</script>
+    const html5QrCode = new Html5Qrcode("reader");
+    Html5Qrcode.getCameras().then(cameras => {
+      if (cameras && cameras.length) {
+        html5QrCode.start(
+          cameras[0].id,
+          { fps: 10, qrbox: 250 },
+          onScanSuccess,
+          onScanFailure
+        );
+      }
+    }).catch(err => {
+      resultEl.innerText = 'Geen camera toegang.';
+    });
+  </script>
 </body>
 </html>
