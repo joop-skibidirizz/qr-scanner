@@ -2,9 +2,10 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8" />
-  <title>QR Scanner</title>
+  <title>QR Muziek Scanner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
   <style>
     body {
       font-family: system-ui, sans-serif;
@@ -17,7 +18,6 @@
       min-height: 100vh;
       margin: 0;
     }
-    h1 { margin-bottom: 1rem; }
     #reader {
       width: 300px;
       border-radius: 16px;
@@ -25,42 +25,56 @@
     }
     #result {
       margin-top: 1rem;
-      word-break: break-all;
       background: #020617;
-      padding: 0.75rem 1rem;
+      color: white;
+      padding: 1rem;
       border-radius: 12px;
+      text-align: center;
     }
-    a { color: #38bdf8; }
+    button {
+      margin-top: 0.75rem;
+      padding: 0.6rem 1.2rem;
+      border-radius: 999px;
+      border: none;
+      background: #38bdf8;
+      color: black;
+      font-size: 1rem;
+      cursor: pointer;
+    }
   </style>
 </head>
+
 <body>
-  <h1>📷 QR-code scanner</h1>
+  <h1>🎵 QR Muziek Scanner</h1>
   <div id="reader"></div>
-  <div id="result">Scan een QR-code…</div>
+
+  <div id="result">
+    Scan een QR-code…
+  </div>
+
+  <audio id="player"></audio>
 
   <script>
-    const resultEl = document.getElementById('result');
+    const resultEl = document.getElementById("result");
+    const player = document.getElementById("player");
 
     function onScanSuccess(decodedText) {
-      resultEl.innerHTML = `Gescand:<br><a href="${decodedText}" target="_blank">${decodedText}</a>`;
+      player.src = decodedText;
+      player.load();
+
+      resultEl.innerHTML = `
+        Liedje klaar 🎶<br>
+        <button onclick="player.play()">▶️ Afspelen</button>
+      `;
     }
 
-    function onScanFailure(error) {
-      // stil falen, camera blijft scannen
-    }
-
-    const html5QrCode = new Html5Qrcode("reader");
+    const qr = new Html5Qrcode("reader");
     Html5Qrcode.getCameras().then(cameras => {
-      if (cameras && cameras.length) {
-        html5QrCode.start(
-          cameras[0].id,
-          { fps: 10, qrbox: 250 },
-          onScanSuccess,
-          onScanFailure
-        );
-      }
-    }).catch(err => {
-      resultEl.innerText = 'Geen camera toegang.';
+      qr.start(
+        cameras[0].id,
+        { fps: 10, qrbox: 250 },
+        onScanSuccess
+      );
     });
   </script>
 </body>
