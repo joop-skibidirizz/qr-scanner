@@ -1,144 +1,99 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { Html5QrcodeScanner } from "html5-qrcode";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 
 // --------------------------------------------------
-// Hitster Clone + Spotify Preview Integration
+// QR → Spotify Auto Player
 // --------------------------------------------------
-// Requirements:
-// 1. Spotify Developer Account
-// 2. Create app: https://developer.spotify.com/dashboard
-// 3. Add redirect URI: http://localhost:5173
-// 4. Put your CLIENT_ID below
+// Flow:
+// 1. Scan QR code
+// 2. Extract Spotify link
+// 3. Auto play via Spotify embed
+// 4. Button: Next song → scan new QR
+//
+// Install:
+// npm install html5-qrcode framer-motion
 // --------------------------------------------------
 
-const CLIENT_ID = "VUL_HIER_JE_SPOTIFY_CLIENT_ID_IN";
-const REDIRECT_URI = "http://localhost:5173";
-const AUTH_ENDPOINT = "https://accounts.spotify.com/authorize";
-const RESPONSE_TYPE = "token";
-
-export default function HitsterSpotifyClone() {
-  const [token, setToken] = useState("");
-  const [track, setTrack] = useState(null);
-  const [guess, setGuess] = useState("");
-  const [result, setResult] = useState(null);
-  const [score, setScore] = useState(0);
+export default function QRSpotifyPlayer() {
+  const [spotifyUrl, setSpotifyUrl] = useState(null);
+  const [scanning, setScanning] = useState(true);
+  const scannerRef = useRef(null);
 
   useEffect(() => {
-    const hash = window.location.hash;
-    let storedToken = window.localStorage.getItem("token");
+    if (!scanning) return;
 
-    if (!storedToken && hash) {
-      storedToken = hash
-        .substring(1)
-        .split("&")
-        .find(elem => elem.startsWith("access_token"))
-        .split("=")[1];
-
-      window.location.hash = "";
-      window.localStorage.setItem("token", storedToken);
-    }
-
-    setToken(storedToken);
-  }, []);
-
-  async function fetchTrack() {
-    const res = await fetch("https://api.spotify.com/v1/recommendations?limit=1&seed_genres=pop,rock,dance", {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+    const scanner = new Html5QrcodeScanner("qr-reader", {
+      fps: 10,
+      qrbox: 250
     });
 
-    const data = await res.json();
-    const t = data.tracks[0];
-
-    setTrack({
-      title: t.name,
-      artist: t.artists[0].name,
-      year: t.album.release_date.substring(0, 4),
-      preview: t.preview_url
-    });
-
-    setGuess("");
-    setResult(null);
-  }
-
-  function checkAnswer() {
-    const diff = Math.abs(parseInt(guess) - parseInt(track.year));
-
-    if (diff === 0) {
-      setResult("Perfect! 🎯 +3");
-      setScore(s => s + 3);
-    } else if (diff <= 2) {
-      setResult("Bijna! ⚡ +1");
-      setScore(s => s + 1);
-    } else {
-      setResult(`Fout ❌ Het juiste jaar was ${track.year}`);
-    }
-  }
-
-  if (!token) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-700 to-pink-600">
-        <a
-          className="px-6 py-3 bg-black text-white rounded-xl text-lg"
-          href={`${AUTH_ENDPOINT}?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=${RESPONSE_TYPE}`}
-        >
-          Login met Spotify
-        </a>
-      </div>
+    scanner.render(
+      (decodedText) => {
+        if (decodedText.includes("spotify.com")) {
+          setSpotifyUrl(convertToEmbed(decodedText));
+          setScanning(false);
+          scanner.clear();
+        }
+      },
+      (error) => {}
     );
+
+    scannerRef.current = scanner;
+
+    return () => {
+      scanner.clear().catch(() => {});
+    };
+  }, [scanning]);
+
+  function convertToEmbed(url) {
+    return url.replace("open.spotify.com", "open.spotify.com/embed");
+  }
+
+  function nextSong() {
+    setSpotifyUrl(null);
+    setScanning(true);
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-700 via-purple-600 to-pink-600 flex items-center justify-center p-4">
-      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-md">
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="w-full max-w-md"
+      >
         <Card className="rounded-2xl shadow-xl">
           <CardContent className="p-6 space-y-4">
-            <h1 className="text-2xl font-bold text-center">🎵 Hitster Spotify</h1>
+            <h1 className="text-2xl font-bold text-center">📸 Scan & Play</h1>
 
-            {!track ? (
-              <Button className="w-full" onClick={fetchTrack}>Start ronde</Button>
-            ) : (
+            {scanning && (
+              <div id="qr-reader" className="w-full rounded-xl overflow-hidden" />
+            )}
+
+            {spotifyUrl && (
               <>
-                <div className="text-center">
-                  <div className="text-lg font-semibold">{track.title}</div>
-                  <div className="text-sm opacity-70">{track.artist}</div>
-                </div>
-
-                {track.preview && (
-                  <audio controls className="w-full">
-                    <source src={track.preview} type="audio/mpeg" />
-                  </audio>
-                )}
-
-                <Input
-                  type="number"
-                  placeholder="Raad het jaar"
-                  value={guess}
-                  onChange={e => setGuess(e.target.value)}
+                <iframe
+                  src={spotifyUrl}
+                  width="100%"
+                  height="380"
+                  frameBorder="0"
+                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                  loading="lazy"
+                  className="rounded-xl"
                 />
 
-                <Button className="w-full" onClick={checkAnswer}>Controleer</Button>
-
-                {result && <div className="text-center font-semibold">{result}</div>}
-
-                <div className="flex justify-between">
-                  <div>Score: <b>{score}</b></div>
-                  <Button variant="secondary" onClick={fetchTrack}>Volgende</Button>
-                </div>
+                <Button className="w-full" onClick={nextSong}>
+                  Volgend liedje ➜ scan nieuwe QR
+                </Button>
               </>
             )}
+
+            <p className="text-xs text-center opacity-60">
+              Werkt met elke Spotify QR code of link
+            </p>
           </CardContent>
-
-          npm create vite@latest hitster-spotify -- --template react
-cd hitster-spotify
-npm install
-npm install framer-motion
-npm run dev
-
         </Card>
       </motion.div>
     </div>
