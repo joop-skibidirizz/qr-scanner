@@ -1,159 +1,112 @@
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-  <meta charset="UTF-8" />
-  <title>QR Scanner</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #0f172a;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
+import React, { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { motion } from "framer-motion";
+
+// --------------------------------------------------
+// Hitster-style MVP (educational clone)
+// --------------------------------------------------
+// Features:
+// - Random song (mock data)
+// - Guess the release year
+// - Score tracking
+// - Simple animations
+//
+// NOTE:
+// This version uses mock data to avoid copyright
+// and API restrictions. You can later plug in
+// Spotify or Deezer APIs.
+// --------------------------------------------------
+
+const SONGS = [
+  { title: "Billie Jean", artist: "Michael Jackson", year: 1982 },
+  { title: "Smells Like Teen Spirit", artist: "Nirvana", year: 1991 },
+  { title: "Rolling in the Deep", artist: "Adele", year: 2010 },
+  { title: "Bohemian Rhapsody", artist: "Queen", year: 1975 },
+  { title: "Blinding Lights", artist: "The Weeknd", year: 2019 }
+];
+
+function randomSong() {
+  return SONGS[Math.floor(Math.random() * SONGS.length)];
+}
+
+export default function HitsterClone() {
+  const [song, setSong] = useState(randomSong());
+  const [guess, setGuess] = useState("");
+  const [result, setResult] = useState(null);
+  const [score, setScore] = useState(0);
+
+  function checkAnswer() {
+    const g = parseInt(guess);
+    if (!g) return;
+
+    const diff = Math.abs(g - song.year);
+    if (diff === 0) {
+      setResult("Perfect! 🎯");
+      setScore(s => s + 3);
+    } else if (diff <= 2) {
+      setResult("Bijna goed! +1 punt ⚡");
+      setScore(s => s + 1);
+    } else {
+      setResult(`Fout ❌ Het juiste jaar was ${song.year}`);
     }
-    h1 { margin-bottom: 1rem; }
-    #reader {
-      width: 300px;
-      border-radius: 16px;
-      overflow: hidden;
-    }
-    #result {
-      margin-top: 1rem;
-      word-break: break-all;
-      background: #020617;
-      padding: 0.75rem 1rem;
-      border-radius: 12px;
-      min-height: 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    a { color: #38bdf8; }
-    #playButton {
-      margin-top: 0.5rem;
-      background: #38bdf8;
-      color: #02202a;
-      border: none;
-      padding: 0.5rem 0.75rem;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    /* hide native audio UI when present */
-    audio { display: none; }
-  </style>
-</head>
-<body>
-  <h1>📷 QR-code scanner</h1>
-  <div id="reader"></div>
-  <div id="result">Scan een QR-code…</div>
+  }
 
-  <!-- Hidden audio element used to play scanned audio files -->
-  <audio id="audio" preload="auto"></audio>
+  function nextSong() {
+    setSong(randomSong());
+    setGuess("");
+    setResult(null);
+  }
 
-  <script>
-    const resultEl = document.getElementById('result');
-    const audioEl = document.getElementById('audio');
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-700 via-pink-600 to-orange-500 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.4 }}
+        className="w-full max-w-md"
+      >
+        <Card className="rounded-2xl shadow-xl">
+          <CardContent className="p-6 space-y-4">
+            <h1 className="text-2xl font-bold text-center">🎵 Hitster Clone</h1>
+            <p className="text-center text-sm text-muted-foreground">
+              Raad het releasejaar
+            </p>
 
-    // basic check for common audio file extensions
-    function looksLikeAudioUrl(url) {
-      return /\.(mp3|wav|ogg|m4a|aac|flac|webm)(\?.*)?$/i.test(url);
-    }
+            <div className="text-center">
+              <div className="text-lg font-semibold">{song.title}</div>
+              <div className="text-sm opacity-70">{song.artist}</div>
+            </div>
 
-    function clearResultUI() {
-      resultEl.innerHTML = '';
-      // remove any play button if present
-      const btn = document.getElementById('playButton');
-      if (btn) btn.remove();
-    }
+            <Input
+              type="number"
+              placeholder="Bijv. 1998"
+              value={guess}
+              onChange={e => setGuess(e.target.value)}
+            />
 
-    function showPlayButton() {
-      clearResultUI();
-      const btn = document.createElement('button');
-      btn.id = 'playButton';
-      btn.textContent = 'Klik om geluid te starten';
-      btn.addEventListener('click', async () => {
-        try {
-          await audioEl.play();
-          btn.remove();
-          resultEl.textContent = '🎵 Afspelen...';
-        } catch (e) {
-          resultEl.textContent = 'Kan audio niet afspelen.';
-        }
-      });
-      resultEl.appendChild(btn);
-    }
+            <Button className="w-full" onClick={checkAnswer}>
+              Controleer
+            </Button>
 
-    async function tryPlayAudio(url) {
-      // stop previous audio
-      try {
-        audioEl.pause();
-      } catch (e) {}
-      audioEl.src = url;
-      audioEl.currentTime = 0;
+            {result && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center font-medium"
+              >
+                {result}
+              </motion.div>
+            )}
 
-      try {
-        // attempt autoplay
-        await audioEl.play();
-        clearResultUI();
-        // minimal status (no title shown)
-        resultEl.textContent = '🎵 Afspelen...';
-      } catch (err) {
-        // autoplay blocked — show a play button so the user can start playback
-        showPlayButton();
-      }
-    }
-
-    function onScanSuccess(decodedText) {
-      // If it's an audio file link, play it and do not show the title/URL.
-      if (/^https?:\/\//i.test(decodedText) && looksLikeAudioUrl(decodedText)) {
-        tryPlayAudio(decodedText);
-        return;
-      }
-
-      // fallback: if it's a generic URL, display a discreet link (no "Gescand:" title)
-      if (/^https?:\/\//i.test(decodedText)) {
-        clearResultUI();
-        const a = document.createElement('a');
-        a.href = decodedText;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        // show link but not as a large title
-        a.textContent = 'Open link';
-        resultEl.appendChild(a);
-        return;
-      }
-
-      // Non-URL or other content: show the raw text but without a large title
-      clearResultUI();
-      resultEl.textContent = decodedText;
-    }
-
-    function onScanFailure(error) {
-      // still failing, camera keeps scanning; do nothing to avoid spam
-    }
-
-    const html5QrCode = new Html5Qrcode("reader");
-    Html5Qrcode.getCameras().then(cameras => {
-      if (cameras && cameras.length) {
-        html5QrCode.start(
-          cameras[0].id,
-          { fps: 10, qrbox: 250 },
-          onScanSuccess,
-          onScanFailure
-        );
-      } else {
-        resultEl.innerText = 'Geen camera gevonden.';
-      }
-    }).catch(err => {
-      resultEl.innerText = 'Geen camera toegang.';
-    });
-  </script>
-</body>
-</html>
+            <div className="flex justify-between items-center">
+              <div>Score: <b>{score}</b></div>
+              <Button variant="secondary" onClick={nextSong}>Volgende</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </div>
+  );
+}
