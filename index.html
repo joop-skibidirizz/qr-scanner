@@ -1,62 +1,116 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hitster Test</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <meta charset="UTF-8" />
+  <title>Hitster QR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      text-align: center;
+    }
+
+    h1 { margin-bottom: 1rem; }
+
+    #reader {
+      width: 280px;
+      border-radius: 16px;
+      overflow: hidden;
+      display: none;
+    }
+
+    #status {
+      margin-top: 1.2rem;
+      font-size: 1.2rem;
+      min-height: 2em;
+    }
+
+    button {
+      padding: 0.8rem 1.6rem;
+      border-radius: 999px;
+      border: none;
+      background: #38bdf8;
+      color: black;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+  </style>
 </head>
 
-<body style="text-align:center; font-family:sans-serif;">
-  <h2>Hitster QR</h2>
-  <button id="start">START</button>
-  <div id="reader" style="width:300px; margin:auto; display:none;"></div>
-  <p id="status">wachten</p>
+<body>
+  <h1>🎵 Hitster QR</h1>
 
-  <audio id="audio"></audio>
+  <button id="startBtn">▶️ Start spel</button>
 
-<script>
-const startBtn = document.getElementById("start");
-const reader = document.getElementById("reader");
-const status = document.getElementById("status");
-const audio = document.getElementById("audio");
+  <div id="reader"></div>
+  <div id="status">Wachten…</div>
 
-const SILENT =
- "data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAAAAAAAAA";
+  <audio id="player"></audio>
 
-let qr;
+  <script>
+    const startBtn = document.getElementById("startBtn");
+    const readerEl = document.getElementById("reader");
+    const statusEl = document.getElementById("status");
+    const player = document.getElementById("player");
 
-startBtn.onclick = async () => {
-  // 🔓 AUDIO UNLOCK – DIT MOET ALS EERSTE
-  audio.src = SILENT;
-  audio.muted = true;
-  await audio.play();
-  audio.pause();
-  audio.muted = false;
+    const PLAY_TIME = 30; // seconden
+    let timer;
+    let qr;
 
-  // UI
-  startBtn.style.display = "none";
-  reader.style.display = "block";
-  status.innerText = "scan…";
+    const SILENT_AUDIO =
+      "data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA" +
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
-  // CAMERA PAS NA AUDIO
-  qr = new Html5Qrcode("reader");
-  const cams = await Html5Qrcode.getCameras();
-  await qr.start(cams[0].id, { fps: 10, qrbox: 250 }, onScan);
-};
+    startBtn.addEventListener("click", async () => {
+      // audio unlock
+      player.src = SILENT_AUDIO;
+      player.muted = true;
+      await player.play();
+      player.pause();
+      player.muted = false;
 
-function onScan(url) {
-  qr.pause();
-  audio.src = url;
-  audio.play();
-  status.innerText = "🎶 speelt 30s";
+      startBtn.style.display = "none";
+      readerEl.style.display = "block";
+      statusEl.innerText = "Scan een kaart…";
 
-  setTimeout(() => {
-    audio.pause();
-    status.innerText = "stop – raad!";
-    qr.resume();
-  }, 30000);
-}
-</script>
+      qr = new Html5Qrcode("reader");
+      const cameras = await Html5Qrcode.getCameras();
+      qr.start(cameras[0].id, { fps: 10, qrbox: 250 }, onScan);
+    });
+
+    function onScan(url) {
+      qr.pause(); // voorkomt dubbele scans
+      player.src = url;
+      player.currentTime = 0;
+      player.play();
+
+      statusEl.innerText = "🎶 Muziek speelt…";
+
+      let remaining = PLAY_TIME;
+      clearInterval(timer);
+
+      timer = setInterval(() => {
+        remaining--;
+        statusEl.innerText = `⏱️ ${remaining}s`;
+
+        if (remaining <= 0) {
+          clearInterval(timer);
+          player.pause();
+          statusEl.innerText = "🟥 Stop! Raad het nummer.";
+          qr.resume();
+        }
+      }, 1000);
+    }
+  </script>
 </body>
 </html>
