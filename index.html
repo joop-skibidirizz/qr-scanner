@@ -10,6 +10,7 @@
     body {
       font-family: system-ui, sans-serif;
       background: #498A79;
+      color: black;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -33,7 +34,7 @@
       min-width: 260px;
     }
     button {
-      padding: 0.8rem 1.6rem;
+      padding: 0.75rem 1.4rem;
       border-radius: 999px;
       border: none;
       background: #38bdf8;
@@ -61,25 +62,19 @@
 
     let qr;
 
-    // ultrakorte stille audio (0.1s)
-    const SILENT_AUDIO =
-      "data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA" +
-      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-
     startBtn.addEventListener("click", async () => {
-      // 🔓 audio unlock
-      player.src = SILENT_AUDIO;
+      // 1️⃣ Audio permissie “unlocken”
       player.muted = true;
-      await player.play();
+      await player.play().catch(() => {});
       player.pause();
       player.muted = false;
 
-      // UI
+      // 2️⃣ UI aanpassen
       startBtn.style.display = "none";
       readerEl.style.display = "block";
       resultEl.innerText = "Scan een QR-code…";
 
-      // QR starten
+      // 3️⃣ QR scanner starten
       qr = new Html5Qrcode("reader");
       const cameras = await Html5Qrcode.getCameras();
       qr.start(
@@ -92,7 +87,8 @@
     function onScanSuccess(decodedText) {
       player.src = decodedText;
       player.play();
-      resultEl.innerText = "🎶 Liedje wordt afgespeeld";
+
+      resultEl.innerHTML = "🎶 Liedje wordt afgespeeld";
     }
   </script>
 </body>
