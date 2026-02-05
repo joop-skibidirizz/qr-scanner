@@ -22,7 +22,6 @@
       width: 300px;
       border-radius: 16px;
       overflow: hidden;
-      display: none;
     }
     #result {
       margin-top: 1rem;
@@ -31,13 +30,14 @@
       padding: 1rem;
       border-radius: 12px;
       text-align: center;
-      min-width: 260px;
     }
     button {
-      padding: 0.75rem 1.4rem;
+      margin-top: 0.75rem;
+      padding: 0.6rem 1.2rem;
       border-radius: 999px;
       border: none;
       background: #38bdf8;
+      color: black;
       font-size: 1rem;
       cursor: pointer;
     }
@@ -46,50 +46,36 @@
 
 <body>
   <h1>🎵 QR Muziek Scanner</h1>
-
-  <button id="startBtn">▶️ Start scanner</button>
-
   <div id="reader"></div>
-  <div id="result">Wachten op start…</div>
+
+  <div id="result">
+    Scan een QR-code…
+  </div>
 
   <audio id="player"></audio>
 
   <script>
-    const startBtn = document.getElementById("startBtn");
-    const readerEl = document.getElementById("reader");
     const resultEl = document.getElementById("result");
     const player = document.getElementById("player");
 
-    let qr;
+    function onScanSuccess(decodedText) {
+      player.src = decodedText;
+      player.load();
 
-    startBtn.addEventListener("click", async () => {
-      // 1️⃣ Audio permissie “unlocken”
-      player.muted = true;
-      await player.play().catch(() => {});
-      player.pause();
-      player.muted = false;
+      resultEl.innerHTML = `
+        Liedje klaar 🎶<br>
+        <button onclick="player.play()">▶️ Afspelen</button>
+      `;
+    }
 
-      // 2️⃣ UI aanpassen
-      startBtn.style.display = "none";
-      readerEl.style.display = "block";
-      resultEl.innerText = "Scan een QR-code…";
-
-      // 3️⃣ QR scanner starten
-      qr = new Html5Qrcode("reader");
-      const cameras = await Html5Qrcode.getCameras();
+    const qr = new Html5Qrcode("reader");
+    Html5Qrcode.getCameras().then(cameras => {
       qr.start(
         cameras[0].id,
         { fps: 10, qrbox: 250 },
         onScanSuccess
       );
     });
-
-    function onScanSuccess(decodedText) {
-      player.src = decodedText;
-      player.play();
-
-      resultEl.innerHTML = "🎶 Liedje wordt afgespeeld";
-    }
   </script>
 </body>
 </html>
