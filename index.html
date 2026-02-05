@@ -1,101 +1,62 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hitster Test</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
 
-// --------------------------------------------------
-// QR → Spotify Auto Player
-// --------------------------------------------------
-// Flow:
-// 1. Scan QR code
-// 2. Extract Spotify link
-// 3. Auto play via Spotify embed
-// 4. Button: Next song → scan new QR
-//
-// Install:
-// npm install html5-qrcode framer-motion
-// --------------------------------------------------
+<body style="text-align:center; font-family:sans-serif;">
+  <h2>Hitster QR</h2>
+  <button id="start">START</button>
+  <div id="reader" style="width:300px; margin:auto; display:none;"></div>
+  <p id="status">wachten</p>
 
-export default function QRSpotifyPlayer() {
-  const [spotifyUrl, setSpotifyUrl] = useState(null);
-  const [scanning, setScanning] = useState(true);
-  const scannerRef = useRef(null);
+  <audio id="audio"></audio>
 
-  useEffect(() => {
-    if (!scanning) return;
+<script>
+const startBtn = document.getElementById("start");
+const reader = document.getElementById("reader");
+const status = document.getElementById("status");
+const audio = document.getElementById("audio");
 
-    const scanner = new Html5QrcodeScanner("qr-reader", {
-      fps: 10,
-      qrbox: 250
-    });
+const SILENT =
+ "data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAAAAAAAAA";
 
-    scanner.render(
-      (decodedText) => {
-        if (decodedText.includes("spotify.com")) {
-          setSpotifyUrl(convertToEmbed(decodedText));
-          setScanning(false);
-          scanner.clear();
-        }
-      },
-      (error) => {}
-    );
+let qr;
 
-    scannerRef.current = scanner;
+startBtn.onclick = async () => {
+  // 🔓 AUDIO UNLOCK – DIT MOET ALS EERSTE
+  audio.src = SILENT;
+  audio.muted = true;
+  await audio.play();
+  audio.pause();
+  audio.muted = false;
 
-    return () => {
-      scanner.clear().catch(() => {});
-    };
-  }, [scanning]);
+  // UI
+  startBtn.style.display = "none";
+  reader.style.display = "block";
+  status.innerText = "scan…";
 
-  function convertToEmbed(url) {
-    return url.replace("open.spotify.com", "open.spotify.com/embed");
-  }
+  // CAMERA PAS NA AUDIO
+  qr = new Html5Qrcode("reader");
+  const cams = await Html5Qrcode.getCameras();
+  await qr.start(cams[0].id, { fps: 10, qrbox: 250 }, onScan);
+};
 
-  function nextSong() {
-    setSpotifyUrl(null);
-    setScanning(true);
-  }
+function onScan(url) {
+  qr.pause();
+  audio.src = url;
+  audio.play();
+  status.innerText = "🎶 speelt 30s";
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-700 via-purple-600 to-pink-600 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-md"
-      >
-        <Card className="rounded-2xl shadow-xl">
-          <CardContent className="p-6 space-y-4">
-            <h1 className="text-2xl font-bold text-center">📸 Scan & Play</h1>
-
-            {scanning && (
-              <div id="qr-reader" className="w-full rounded-xl overflow-hidden" />
-            )}
-
-            {spotifyUrl && (
-              <>
-                <iframe
-                  src={spotifyUrl}
-                  width="100%"
-                  height="380"
-                  frameBorder="0"
-                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                  loading="lazy"
-                  className="rounded-xl"
-                />
-
-                <Button className="w-full" onClick={nextSong}>
-                  Volgend liedje ➜ scan nieuwe QR
-                </Button>
-              </>
-            )}
-
-            <p className="text-xs text-center opacity-60">
-              Werkt met elke Spotify QR code of link
-            </p>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </div>
-  );
+  setTimeout(() => {
+    audio.pause();
+    status.innerText = "stop – raad!";
+    qr.resume();
+  }, 30000);
 }
+</script>
+</body>
+</html>
