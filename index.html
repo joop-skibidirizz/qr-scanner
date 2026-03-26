@@ -1,99 +1,18 @@
-// App.js
-import React, { useState, useEffect } from 'react';
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <title>Hitster Clone</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>🎶 Hitster Clone</h1>
 
-const API_URL = 'http://localhost:5000';
+  <button id="draw">🎴 Trek kaart</button>
 
-function App() {
-  const [playlists, setPlaylists] = useState([]);
-  const [newPlaylistName, setNewPlaylistName] = useState('');
-  const [selectedPlaylist, setSelectedPlaylist] = useState(null);
-  const [songForm, setSongForm] = useState({ title: '', artist: '', url: '' });
+  <div id="card"></div>
+  <div id="timeline"></div>
 
-  useEffect(() => {
-    fetch(`${API_URL}/playlists`)
-      .then(res => res.json())
-      .then(data => setPlaylists(data));
-  }, []);
-
-  const createPlaylist = async () => {
-    if (!newPlaylistName) return;
-    const res = await fetch(`${API_URL}/playlists`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newPlaylistName }),
-    });
-    const playlist = await res.json();
-    setPlaylists([...playlists, playlist]);
-    setNewPlaylistName('');
-  };
-
-  const addSong = async () => {
-    if (!selectedPlaylist) return;
-    const res = await fetch(`${API_URL}/playlists/${selectedPlaylist._id}/songs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(songForm),
-    });
-    const updatedPlaylist = await res.json();
-    setPlaylists(playlists.map(pl => (pl._id === updatedPlaylist._id ? updatedPlaylist : pl)));
-    setSongForm({ title: '', artist: '', url: '' });
-  };
-
-  return (
-    <div style={{ padding: '20px' }}>
-      <h1>Hitster Clone</h1>
-
-      <div>
-        <h2>Afspeellijsten</h2>
-        <input
-          value={newPlaylistName}
-          onChange={e => setNewPlaylistName(e.target.value)}
-          placeholder="Nieuwe playlist naam"
-        />
-        <button onClick={createPlaylist}>Maak playlist</button>
-
-        <ul>
-          {playlists.map(pl => (
-            <li key={pl._id} onClick={() => setSelectedPlaylist(pl)} style={{ cursor: 'pointer' }}>
-              {pl.name} ({pl.songs.length} nummers)
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {selectedPlaylist && (
-        <div>
-          <h2>{selectedPlaylist.name} - nummers</h2>
-          <ul>
-            {selectedPlaylist.songs.map((song, idx) => (
-              <li key={idx}>
-                {song.title} - {song.artist} <br />
-                <a href={song.url} target="_blank" rel="noreferrer">Luister</a>
-              </li>
-            ))}
-          </ul>
-
-          <h3>Voeg nummer toe</h3>
-          <input
-            placeholder="Titel"
-            value={songForm.title}
-            onChange={e => setSongForm({ ...songForm, title: e.target.value })}
-          />
-          <input
-            placeholder="Artiest"
-            value={songForm.artist}
-            onChange={e => setSongForm({ ...songForm, artist: e.target.value })}
-          />
-          <input
-            placeholder="URL"
-            value={songForm.url}
-            onChange={e => setSongForm({ ...songForm, url: e.target.value })}
-          />
-          <button onClick={addSong}>Toevoegen</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default App;
+  <script src="script.js"></script>
+</body>
+</html>
