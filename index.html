@@ -1,116 +1,99 @@
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-  <meta charset="UTF-8" />
-  <title>Hitster QR</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+// App.js
+import React, { useState, useEffect } from 'react';
 
-  <style>
-    body 
-      font-family: system-ui, sans-serif;
-      background: #0f172a;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      text-align: center;
-    }
+const API_URL = 'http://localhost:5000';
 
-    h1 { margin-bottom: 1rem; }
+function App() {
+  const [playlists, setPlaylists] = useState([]);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [selectedPlaylist, setSelectedPlaylist] = useState(null);
+  const [songForm, setSongForm] = useState({ title: '', artist: '', url: '' });
 
-    #reader {
-      width: 280px;
-      border-radius: 16px;
-      overflow: hidden;
-      display: none;
-    }
+  useEffect(() => {
+    fetch(`${API_URL}/playlists`)
+      .then(res => res.json())
+      .then(data => setPlaylists(data));
+  }, []);
 
-    #status {
-      margin-top: 1.2rem;
-      font-size: 1.2rem;
-      min-height: 2em;
-    }
-
-    button {
-      padding: 0.8rem 1.6rem;
-      border-radius: 999px;
-      border: none;
-      background: #38bdf8;
-      color: black;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-  </style>
-</head>
-
-<body>
-  <h1>🎵 Hitster QR</h1>
-
-  <button id="startBtn">▶️ Start spel</button>
-
-  <div id="reader"></div>
-  <div id="status">Wachten…</div>
-
-  <audio id="player"></audio>
-
-  <script>
-    const startBtn = document.getElementById("startBtn");
-    const readerEl = document.getElementById("reader");
-    const statusEl = document.getElementById("status");
-    const player = document.getElementById("player");
-
-    const PLAY_TIME = 30; // seconden
-    let timer;
-    let qr;
-
-    const SILENT_AUDIO =
-      "data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA" +
-      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-
-    startBtn.addEventListener("click", async () => {
-      // audio unlock
-      player.src = SILENT_AUDIO;
-      player.muted = true;
-      await player.play();
-      player.pause();
-      player.muted = false;
-
-      startBtn.style.display = "none";
-      readerEl.style.display = "block";
-      statusEl.innerText = "Scan een kaart…";
-
-      qr = new Html5Qrcode("reader");
-      const cameras = await Html5Qrcode.getCameras();
-      qr.start(cameras[0].id, { fps: 10, qrbox: 250 }, onScan);
+  const createPlaylist = async () => {
+    if (!newPlaylistName) return;
+    const res = await fetch(`${API_URL}/playlists`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newPlaylistName }),
     });
+    const playlist = await res.json();
+    setPlaylists([...playlists, playlist]);
+    setNewPlaylistName('');
+  };
 
-    function onScan(url) {
-      qr.pause(); // voorkomt dubbele scans
-      player.src = url;
-      player.currentTime = 0;
-      player.play();
+  const addSong = async () => {
+    if (!selectedPlaylist) return;
+    const res = await fetch(`${API_URL}/playlists/${selectedPlaylist._id}/songs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(songForm),
+    });
+    const updatedPlaylist = await res.json();
+    setPlaylists(playlists.map(pl => (pl._id === updatedPlaylist._id ? updatedPlaylist : pl)));
+    setSongForm({ title: '', artist: '', url: '' });
+  };
 
-      statusEl.innerText = "🎶 Muziek speelt…";
+  return (
+    <div style={{ padding: '20px' }}>
+      <h1>Hitster Clone</h1>
 
-      let remaining = PLAY_TIME;
-      clearInterval(timer);
+      <div>
+        <h2>Afspeellijsten</h2>
+        <input
+          value={newPlaylistName}
+          onChange={e => setNewPlaylistName(e.target.value)}
+          placeholder="Nieuwe playlist naam"
+        />
+        <button onClick={createPlaylist}>Maak playlist</button>
 
-      timer = setInterval(() => {
-        remaining--;
-        statusEl.innerText = `⏱️ ${remaining}s`;
+        <ul>
+          {playlists.map(pl => (
+            <li key={pl._id} onClick={() => setSelectedPlaylist(pl)} style={{ cursor: 'pointer' }}>
+              {pl.name} ({pl.songs.length} nummers)
+            </li>
+          ))}
+        </ul>
+      </div>
 
-        if (remaining <= 0) {
-          clearInterval(timer);
-          player.pause();
-          statusEl.innerText = "🟥 Stop! Raad het nummer.";
-          qr.resume();
-        }
-      }, 1000);
-    }
-  </script>
-</body>
-</html>
+      {selectedPlaylist && (
+        <div>
+          <h2>{selectedPlaylist.name} - nummers</h2>
+          <ul>
+            {selectedPlaylist.songs.map((song, idx) => (
+              <li key={idx}>
+                {song.title} - {song.artist} <br />
+                <a href={song.url} target="_blank" rel="noreferrer">Luister</a>
+              </li>
+            ))}
+          </ul>
+
+          <h3>Voeg nummer toe</h3>
+          <input
+            placeholder="Titel"
+            value={songForm.title}
+            onChange={e => setSongForm({ ...songForm, title: e.target.value })}
+          />
+          <input
+            placeholder="Artiest"
+            value={songForm.artist}
+            onChange={e => setSongForm({ ...songForm, artist: e.target.value })}
+          />
+          <input
+            placeholder="URL"
+            value={songForm.url}
+            onChange={e => setSongForm({ ...songForm, url: e.target.value })}
+          />
+          <button onClick={addSong}>Toevoegen</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;
