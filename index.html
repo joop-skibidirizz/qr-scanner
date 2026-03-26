@@ -2,38 +2,41 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8" />
-  <title>QR Muziek Scanner</title>
+  <title>Hitster QR</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
   <style>
-    body {
+    body 
       font-family: system-ui, sans-serif;
-      background: #498A79;
-      color: black;
+      background: #0f172a;
+      color: white;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
       margin: 0;
-    }
-    #reader {
-      width: 300px;
-      border-radius: 16px;
-      overflow: hidden;
-    }
-    #result {
-      margin-top: 1rem;
-      background: #020617;
-      color: white;
-      padding: 1rem;
-      border-radius: 12px;
       text-align: center;
     }
+
+    h1 { margin-bottom: 1rem; }
+
+    #reader {
+      width: 280px;
+      border-radius: 16px;
+      overflow: hidden;
+      display: none;
+    }
+
+    #status {
+      margin-top: 1.2rem;
+      font-size: 1.2rem;
+      min-height: 2em;
+    }
+
     button {
-      margin-top: 0.75rem;
-      padding: 0.6rem 1.2rem;
+      padding: 0.8rem 1.6rem;
       border-radius: 999px;
       border: none;
       background: #38bdf8;
@@ -45,37 +48,69 @@
 </head>
 
 <body>
-  <h1>🎵 QR Muziek Scanner</h1>
-  <div id="reader"></div>
+  <h1>🎵 Hitster QR</h1>
 
-  <div id="result">
-    Scan een QR-code…
-  </div>
+  <button id="startBtn">▶️ Start spel</button>
+
+  <div id="reader"></div>
+  <div id="status">Wachten…</div>
 
   <audio id="player"></audio>
 
   <script>
-    const resultEl = document.getElementById("result");
+    const startBtn = document.getElementById("startBtn");
+    const readerEl = document.getElementById("reader");
+    const statusEl = document.getElementById("status");
     const player = document.getElementById("player");
 
-    function onScanSuccess(decodedText) {
-      player.src = decodedText;
-      player.load();
+    const PLAY_TIME = 30; // seconden
+    let timer;
+    let qr;
 
-      resultEl.innerHTML = `
-        Liedje klaar 🎶<br>
-        <button onclick="player.play()">▶️ Afspelen</button>
-      `;
-    }
+    const SILENT_AUDIO =
+      "data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA" +
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
-    const qr = new Html5Qrcode("reader");
-    Html5Qrcode.getCameras().then(cameras => {
-      qr.start(
-        cameras[0].id,
-        { fps: 10, qrbox: 250 },
-        onScanSuccess
-      );
+    startBtn.addEventListener("click", async () => {
+      // audio unlock
+      player.src = SILENT_AUDIO;
+      player.muted = true;
+      await player.play();
+      player.pause();
+      player.muted = false;
+
+      startBtn.style.display = "none";
+      readerEl.style.display = "block";
+      statusEl.innerText = "Scan een kaart…";
+
+      qr = new Html5Qrcode("reader");
+      const cameras = await Html5Qrcode.getCameras();
+      qr.start(cameras[0].id, { fps: 10, qrbox: 250 }, onScan);
     });
+
+    function onScan(url) {
+      qr.pause(); // voorkomt dubbele scans
+      player.src = url;
+      player.currentTime = 0;
+      player.play();
+
+      statusEl.innerText = "🎶 Muziek speelt…";
+
+      let remaining = PLAY_TIME;
+      clearInterval(timer);
+
+      timer = setInterval(() => {
+        remaining--;
+        statusEl.innerText = `⏱️ ${remaining}s`;
+
+        if (remaining <= 0) {
+          clearInterval(timer);
+          player.pause();
+          statusEl.innerText = "🟥 Stop! Raad het nummer.";
+          qr.resume();
+        }
+      }, 1000);
+    }
   </script>
 </body>
 </html>
